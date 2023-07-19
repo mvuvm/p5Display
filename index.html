@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    html {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body{
+        position: fixed;
+        color: #fff;
+        font-size: 16px;
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+      }
+      .body:before {
+        content: '';
+        display: inline-block;
+        vertical-align: middle;
+        height: 100%;
+      }
+      /* ignore the code below */
+
+
+      .link-area
+      {
+        position:fixed;
+        bottom:20px;
+        left:20px;
+        padding:15px;
+        border-radius:40px;
+        background:tomato;
+      }
+      .link-area a
+      {
+        text-decoration:none;
+        color:#fff;
+        font-size:25px;
+      }
+
+      .normal_background{
+        position: absolute;
+        width: 100%;
+        background-image: url(./img/bg.png);
+        background-size: cover;
+        background-position: top center;
+        height: 80%;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+        z-index: 99;
+      }
+      .body {
+        position: absolute;
+        color: #fff;
+        font-size: 16px;
+        font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+        background-image: url(https://images.unsplash.com/photo-1635846650676-55b9ba247172?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=627&q=80);
+        background-size: contain;
+        background-position: top center;
+        width: 100%;
+        height: 100%;
+        min-height: 890px;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+      }
+      .section{
+        display: block;
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        height:100%;
+        margin: 0 auto;
+        overflow: hidden;
+      }
+</style>
+</head>
+<body>
+    <section class="section">
+        <div class="normal_background">위쪽은 그냥 이미지</div>
+        <div class="body">
+            아래쪽은 물결 이미지
+        </div>
+    </section>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.0.0/jquery.min.js"></script>
+    <script src="./jquery.ripples-min.js"></script>
+
+    <script>
+        $('.body').ripples({
+        resolution: 300,
+        dropRadius: 20,
+        perturbance: 0.03,
+        });
+    </script>
+</body>
+</html>
