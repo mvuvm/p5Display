@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>온라인 전광판</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore-min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+     <!-- fontawesome -->
+     <script src="https://kit.fontawesome.com/2229480eb5.js" crossorigin="anonymous"></script>
+    <style>
+ body{
+    position: relative;
+    width: 100vw;
+    height: auto;
+	align-items: center;
+	color: #fff;
+	display: flex;
+	flex-direction: column;
+	font-family: 'Palatino', sans-serif;
+	justify-content: center;
+	margin: 0;
+    overflow-x: hidden;
+}
+
+#container{
+    position: relative;
+    width: 100%;
+    height: auto;
+    align-items: center;
+	background-color: #FA8BFF;
+    background-image: linear-gradient(45deg, #FA8BFF 0%, #2BD2FF 52%, #2BFF88 90%);
+	color: #fff;
+	display: flex;
+	flex-direction: column;
+	font-family: 'Palatino', sans-serif;
+	justify-content: center;
+	margin: 0;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    padding: 50px 0;
+}
+
+#container canvas{
+    box-shadow: 0 0 30px #000000;
+    border-radius: 20px;
+}
+
+/* .desc{
+    width: 100%;
+    display: block;
+    position: absolute;
+    top:50%; left: 0; transform: translateY(-50%);
+    text-align: center;
+	margin-bottom: 0;
+    z-index: 999;
+    opacity: 1;
+    transition: all ease 0.2s;
+} */
+
+#container::after{
+    content: "이미지를 드래그하여 넣어보세요. (가로,세로 1000px 이하, 정사각 비율 권장)";
+    position:absolute;
+    top: 50%; left: 0; transform: translateY(-50%);
+    display: block;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    opacity: 1;
+    transition: all ease 0.2s;
+}
+
+#container.desc-off::after{
+    opacity: 0;
+}
+
+
+.reset,#edit{
+    position: fixed;
+    bottom: 30px; right: 30px;
+    z-index: 999;
+    background: #8f8f8f;
+    padding: 10px 30px;
+    border-radius: 20px;
+    box-shadow: none;
+    border: none;
+    cursor: pointer;
+    transition: all ease 0.2s;
+    background-image: linear-gradient(to right, #2BD2FF, #2BFF88);
+    font-weight: bold;
+}
+.reset:hover,#edit:hover{
+    transform: translateY(5px);
+}
+#edit{
+    bottom: 80px; right: 30px;
+    background-image: linear-gradient(to right, #FA8BFF, #2BD2FF);
+}
+
+.reset i,
+#edit i{
+    margin-right: 10px;
+}
+
+.dimmed{
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.9);
+    color: #ddd;
+    text-align: center;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+@media screen and (max-width: 1000px) {
+    body{
+        position: fixed;
+        height: 100%;
+        overflow: hidden;
+    }
+    .dimmed{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+}
+
+@media screen and (max-height: 450px) {
+    body{
+        height: 100%;
+        overflow: hidden;
+    }
+    .dimmed{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+}
+
+/* 캡쳐 시 */
+#screenshot_background {
+	width: 100%;
+	height: 100%;
+	position: fixed;
+	top: 0px;
+	left: 0px;
+	display: block;
+	opacity: 0.3;
+	text-align: center;
+	box-sizing: border-box;
+	z-index: 2147483647;
+	border-color: rgb(255, 255, 255);
+	border-style: solid;
+}
+
+/* 캡쳐 영역만 밝게 하기 위한 요소 */
+#screenshot:before, #screenshot:after {
+	border: none !important;
+	content: "" !important;
+	height: 100% !important;
+	position: absolute !important;
+	width: 100% !important;
+}
+
+#screenshot:before {
+	border-right: 1px solid white !important;
+	border-bottom: 1px solid white !important;
+	left: -100% !important;
+	top: -100% !important
+}
+
+#screenshot:after {
+	border-top: 1px solid white !important;
+	border-left: 1px solid white !important;
+	left: 0 !important;
+	top: 0 !important
+}
+
+#screenshot {
+	position: fixed !important;
+    top:0; left: 0;
+	width: 100% !important;
+    height: 100% !important;
+	z-index: 2147483648 !important
+}
+
+/* 캡쳐 시 마우스 커서 모양 변경 */
+body.edit_cursor {
+	cursor: crosshair;
+}
+
+    </style>
+</head>
+<body>
+    <div class="dimmed">PC로 접속하시거나<br/>창사이즈를 더 키워주세요.</div>
+    <div id="container">
+        <button id="edit"><i class="fa-solid fa-camera"></i>캡쳐</button>
+        <button class="reset"><i class="fa-solid fa-rotate"></i>리셋</button>
+        <a id="target" style="display: none"></a>
+    </div>
+
+<script>
+const MAX_SPEED = 10;
+const MAX_FORCE = 1.5;
+const CIRCLE_RADIUS = 50;
+const WIDTH = 1000;
+const HEIGHT = 1000;
+const CIRCLE_SIZE = WIDTH / 125; // Change this to WIDTH / 150 for more circles
+const DARK_TRESHOLD = 10;
+let circles = [];
+let img;
+
+document.querySelector('.reset').addEventListener('click', function(){
+    location.reload();
+});
+
+var sketch = function(p){
+//p5 홈페이지내의 예제 활용하여 변경
+p.setup = function(){
+    const c = p.createCanvas(WIDTH, HEIGHT);
+    c.drop(gotFile);
+    /* image(img, width / 2, height / 2); */
+    // Using underscore to flatten the array
+}
+function gotFile(file) {
+  // 드롭된 파일이 이미지 파일이라면,
+  if (file.type === 'image') {
+    // 이미지 DOM 요소를 생성하되, 화면엔 띄우지 않는다.
+    img = p.createImg(file.data).hide();
+    // 이미지를 캔버스에 그린다.
+    setTimeout(function(){
+        p.pixelDensity(1);
+        p.imageMode(p.CENTER);
+        if(img.width > img.height){
+            p.image(img, p.width / 1.99, p.height / 1.7);
+        }else if(img.width < img.height){
+            p.image(img, p.width / 1.99, (p.height / 1.7) + ((img.height - img.width)/2.4));
+        }else{
+            p.image(img, p.width / 1.99, p.height / 1.7);
+        }
+
+        let matrix = getMatrixOfPixels();
+        let newArrayOfAveragedPixels = _.flatten(getAverageMatrixValues(matrix, CIRCLE_SIZE));
+    },200);
+
+    const container = document.querySelector('#container');
+    container.classList.add('desc-off');
+  } else {
+    console.log('Not an image file!');
+  }
+}
+p.draw = function(){
+    p.background(0);
+    p.drawCircles();
+
+}
+
+p.drawCircles = function(){
+    circles.forEach(c => {
+        c.applyBehaviors();
+        c.update();
+        c.draw();
+    });
+}
+
+function getMatrixOfPixels() {
+    // Load pixels into a pixels array (p5js functionality)
+    p.loadPixels();
+
+    // Group the pixel r,g,b,a values into arrays
+    let groupPixels = [];
+    for(let i = 0; i < p.pixels.length; i+= 4) {
+        let r = p.pixels[i];
+        let g = p.pixels[i + 1];
+        let b = p.pixels[i + 2];
+        let a = p.pixels[i + 3];
+        groupPixels.push([r, g, b, a]);
+    }
+
+    // Create a matrix with the values
+    let matrix = [];
+    for(let i = 0; i < WIDTH; i++) {
+        matrix[i] = [];
+        for(let j = 0; j < HEIGHT; j++) {
+            let index = i * WIDTH + j;
+            matrix[i].push(groupPixels[index]);
+        }
+    }
+    return matrix;
+}
+
+// Getting the average values of r,g,b,a into a new matrix
+function getAverageMatrixValues(matrix, step) {
+    const width = matrix.length;
+    const height = matrix[0].length;
+    let newMatrix = [];
+    // Loop through the matrix, but with a step
+    for(let i = 0; i < width; i+= step) {
+        for(let j = 0; j < height; j+= step) {
+            let totalValue = [0, 0, 0, 0];
+            for(let x = 0; x < step; x++) {
+                // Only create new array if it is undefined
+                if(typeof newMatrix[i+x] === 'undefined'){
+                    newMatrix[i+x] = [];
+                }
+                for(let y = 0; y < step; y++) {
+                    // Add up all the values for r,g,b,a
+                    totalValue[0] += matrix[i+x][j+y][0];
+                    totalValue[1] += matrix[i+x][j+y][1];
+                    totalValue[2] += matrix[i+x][j+y][2];
+                    totalValue[3] += matrix[i+x][j+y][3];
+                }
+            }
+            // Calculate the average of the r,g,b,a values
+            let averageValueR = totalValue[0] / (step * step);
+            let averageValueG = totalValue[1] / (step * step);
+            let averageValueB = totalValue[2] / (step * step);
+            let averageValueA = totalValue[3] / (step * step);
+            let averageValue = [averageValueR, averageValueG, averageValueB, averageValueA];
+
+            // Adding these values into the points array
+            let x = j + step / 2;
+            let y = i + step / 2 - 80;
+            let color = averageValue;
+
+            // Only add non-black circles
+            if (!circleIsDarker(color)){
+                circles.push(new Vehicle(x, y, color));
+            }
+
+            for(let x = 0; x < step; x++) {
+                for(let y = 0; y < step; y++) {
+                    newMatrix[i+x][j+y] = averageValue;
+                }
+            }
+        }
+    }
+    return newMatrix;
+}
+
+function circleIsDarker(color) {
+    return color[0] < DARK_TRESHOLD && color[1] < DARK_TRESHOLD && color[2] < DARK_TRESHOLD;
+}
+
+class Vehicle{
+    constructor(x, y, color) {
+        this.pos = p.createVector(p.random(p.width), p.random(p.height));
+        this.target = p.createVector(x, y)
+        this.vel = p5.Vector.random2D();
+        this.acc = p.createVector();
+        this.color = color;
+    }
+
+    update() {
+        this.pos.add(this.vel);
+        this.vel.add(this.acc);
+        this.acc.mult(0);
+    }
+
+    draw() {
+        p.stroke([...this.color]);
+        p.strokeWeight(CIRCLE_SIZE - p.random(3)); // 랜덤을 넣음으로서 생성되는 원 크기가 제각각이 되고
+        p.point(this.pos.x, this.pos.y); // 랜덤을 넣음으로서 자글자글 효과 생김
+    }
+
+    arrive(target) {
+        const desired = p5.Vector.sub(target, this.pos);
+        const distance = desired.mag();
+        let speed = MAX_SPEED;
+
+        if (distance < CIRCLE_RADIUS) {
+            speed = p.map(distance, 0, 100, 0, MAX_SPEED);
+        }
+
+        desired.setMag(speed);
+
+        const steer = p5.Vector.sub(desired, this.vel);
+        steer.limit(MAX_FORCE);
+
+        return steer;
+    }
+
+
+    flee(target) {
+        const desired = p5.Vector.sub(target, this.pos);
+        const distance = desired.mag();
+
+        if (distance < CIRCLE_RADIUS) {
+            desired.setMag(MAX_SPEED);
+            desired.mult(-1);
+
+            const steer = p5.Vector.sub(desired, this.vel);
+            steer.limit(MAX_FORCE);
+
+            return steer;
+        } else {
+            return p.createVector(0, 0);
+        }
+    }
+
+    applyForce(f) {
+        this.acc.add(f);
+    }
+
+    applyBehaviors() {
+        const arrive = this.arrive(this.target);
+        /* const mouse = p.createVector(p.mouseX, p.mouseY);
+        const flee = this.flee(mouse); */  // 마우스 올려도 안움직이게
+
+        arrive.mult(1);
+        /* flee.mult(5); */
+
+        this.applyForce(arrive);
+        /* this.applyForce(flee); */
+    }
+}
+}
+
+var drawSketch = new p5(sketch, window.document.getElementById('container'));
+
+//캡쳐
+
+// call this to Disable
+var keys = {37: 1, 38: 1, 39: 1, 40: 1};
+
+function preventDefault(e) {
+  e.preventDefault();
+}
+
+function preventDefaultForScrollKeys(e) {
+  if (keys[e.keyCode]) {
+    preventDefault(e);
+    return false;
+  }
+}
+var supportsPassive = false;
+try {
+  window.addEventListener("test", null, Object.defineProperty({}, 'passive', {
+    get: function () { supportsPassive = true; }
+  }));
+} catch(e) {}
+
+var wheelOpt = supportsPassive ? { passive: false } : false;
+var wheelEvent = 'onwheel' in document.createElement('div') ? 'wheel' : 'mousewheel';
+function disableScroll() {
+  window.addEventListener('DOMMouseScroll', preventDefault, false); // older FF
+  window.addEventListener(wheelEvent, preventDefault, wheelOpt); // modern desktop
+  window.addEventListener('touchmove', preventDefault, wheelOpt); // mobile
+  window.addEventListener('keydown', preventDefaultForScrollKeys, false);
+}
+
+// call this to Enable
+function enableScroll() {
+  window.removeEventListener('DOMMouseScroll', preventDefault, false);
+  window.removeEventListener(wheelEvent, preventDefault, wheelOpt);
+  window.removeEventListener('touchmove', preventDefault, wheelOpt);
+  window.removeEventListener('keydown', preventDefaultForScrollKeys, false);
+}
+
+
+window.onload = function(){
+	// 캡쳐 버튼 클릭 이벤트 등록
+	document.getElementById("edit").addEventListener("click", function(e){
+		// 마우스 커서 모양 변경 (eidt_cursor 클래스 추가)
+		document.querySelector("body").classList.add("edit_cursor");
+        let scrollLocation = document.documentElement.scrollTop; // 현재 스크롤바 위치
+        window.scrollTo(0, scrollLocation);
+        disableScroll()
+		screenshot(e);
+	});
+}
+
+
+function screenshot(e){
+	var startX, startY;
+	var height = window.innerHeight;
+	var width = window.innerWidth;
+
+	// 배경을 어둡게 깔아주기 위한 div 객체 생성
+	var $screenBg = document.createElement("div");
+	$screenBg.id = "screenshot_background";
+	$screenBg.style.borderWidth = "0 0 " + height + "px 0";
+
+	// 마우스 이동하면서 선택한 영역의 크기를 보여주기 위한 div 객체 생성
+	var $screenshot = document.createElement("div");
+	$screenshot.id = "screenshot";
+
+	document.querySelector("body").appendChild($screenBg);
+	document.querySelector("body").appendChild($screenshot);
+
+	var selectArea = false;
+	var body = document.querySelector('body');
+
+	// 마우스 누르는 이벤트 함수
+	var mousedown = function(e) {
+		e.preventDefault();
+		selectArea = true;
+		startX = e.clientX;
+		startY = e.clientY;
+		// 이벤트를 실행하면서 이벤트 삭제 (한번만 동작하도록)
+		body.removeEventListener("mousedown", mousedown);
+	}
+	// 마우스 누르는 이벤트 등록
+	body.addEventListener("mousedown", mousedown);
+
+	// 클릭한 마우스 떼는 이벤트 함수
+	var mouseup = function(e) {
+		selectArea = false;
+		// (초기화) 마우스 떼면서 마우스무브 이벤트 삭제
+		body.removeEventListener("mousemove", mousemove);
+		// (초기화) 스크린샷을 위해 생성한 객체 삭제
+		$screenshot.parentNode.removeChild($screenshot);
+		$screenBg.parentNode.removeChild($screenBg);
+		var x = e.clientX;
+		var y = e.clientY;
+
+		var top = Math.min(y, startY) + (document.documentElement.scrollTop);
+		var left = Math.min(x, startX) - 20;
+		var width = Math.max(x, startX) - left;
+        console.log(document.documentElement.scrollTop);
+		var height = Math.max(y, startY) - (top - document.documentElement.scrollTop);
+		html2canvas(document.body).then(
+			function(canvas) { //전체 화면 캡쳐
+				 // 선택 영역만큼 crop
+				var img = canvas.getContext('2d').getImageData(left, top, width, height);
+				var c = document.createElement("canvas");
+				c.width = width;
+				c.height = height;
+				c.getContext('2d').putImageData(img, 0, 0);
+				save(c); // crop한 이미지 저장
+			}
+		);
+		body.removeEventListener("mouseup", mouseup);
+        // 마우스 커서 기본으로 변경
+		document.querySelector("body").classList.remove("edit_cursor");
+	}
+	body.addEventListener("mouseup", mouseup);
+
+	// 마우스무브 이벤트 함수
+	function mousemove(e) {
+		var x = e.clientX;
+		var y = e.clientY;
+		$screenshot.style.left = x;
+		$screenshot.style.top = y;
+		if (selectArea) { //캡쳐 영역 선택 그림
+			var top = Math.min(y, startY);
+			var right = width - Math.max(x, startX);
+			var bottom = height - Math.max(y, startY);
+			var left = Math.min(x, startX);
+			$screenBg.style.borderWidth = top + 'px ' + right + 'px ' + bottom + 'px ' + left + 'px';
+		}
+	}
+	body.addEventListener("mousemove", mousemove);
+
+    // 캡쳐한 이미지 저장
+	function save(canvas) {
+		if (navigator.msSaveBlob) {
+			var blob = canvas.msToBlob();
+			return navigator.msSaveBlob(blob, '전광판 스크린샷.jpg');
+		} else {
+			var el = document.getElementById("target");
+			el.href = canvas.toDataURL("image/jpeg");
+			el.download = '전광판 스크린샷.jpg';
+			el.click();
+		}
+        enableScroll()
+	}
+}
+
+    </script>
+</body>
+</html>
